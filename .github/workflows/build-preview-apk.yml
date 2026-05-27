@@ -11,10 +11,9 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: ${{ github.event.workflow_run.conclusion == 'success' }}
-
-    outputs:
-      apk-name: ${{ steps.set-apk-name.outputs.APK_NAME }} # ← pass apk filename to upload job
+    if: |
+      ${{ github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' }}
 
     steps:
       - name: Checkout repo
@@ -26,48 +25,25 @@ jobs:
           node-version: 24
           cache: npm
 
+      - name: Setup Java
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
       - name: Install dependencies
         run: npm ci
 
-      - name: Setup EAS
-        uses: expo/expo-github-action@v8
-        with:
-          eas-version: latest
-          token: ${{ secrets.EXPO_TOKEN }}
+      - name: Expo Prebuild
+        run: npx expo prebuild --platform android --clean
 
-      - name: Build Android
-        id: build
-        run: |
-          BUILD_URL=$(eas build --platform android --profile preview --non-interactive --json | jq -r '.[0].artifacts.buildUrl')
-          echo "BUILD_URL=$BUILD_URL" >> $GITHUB_OUTPUT
-
-      - name: Download APK from EAS
-        id: set-apk-name
-        run: |
-          APK_NAME=app-preview-${{ github.sha }}.apk
-          curl -L -o $APK_NAME "${{ steps.build.outputs.BUILD_URL }}"
-          echo "APK_NAME=$APK_NAME" >> $GITHUB_OUTPUT
-
-      - name: Save APK as cache for upload job
-        uses: actions/cache/save@v4
-        with:
-          path: app-preview-${{ github.sha }}.apk
-          key: apk-${{ github.sha }}
-
-  upload:
-    runs-on: ubuntu-latest
-    needs: build # ← only runs after build job completes successfully
-
-    steps:
-      - name: Restore APK from cache
-        uses: actions/cache/restore@v4
-        with:
-          path: app-preview-${{ github.sha }}.apk
-          key: apk-${{ github.sha }}
+      - name: Build APK
+        working-directory: android
+        run: ./gradlew assembleRelease
 
       - name: Upload APK as GitHub Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-preview-${{ github.sha }}
-          path: app-preview-${{ github.sha }}.apk
+          path: android/app/build/outputs/apk/release/app-release.apk
           retention-days: 30
