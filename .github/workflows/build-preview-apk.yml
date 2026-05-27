@@ -1,10 +1,12 @@
 name: Build Android APK (Preview Build) on merge/push to main
 
 on:
-  pull_request:
-    branches: [main]
-  push:
-    branches: [main]
+  workflow_run:
+    workflows: ["CI Checks on merge/push to main"]
+    types:
+      - completed
+    branches:
+      - main
 
 jobs:
   build:
