@@ -10,10 +10,7 @@ import {
 } from "react-native";
 import SpaceCard from "../components/SpaceCard";
 
-// -----------------------------------------------------------
-// Mock data — in a real app you'd fetch from an API using
-// the params below as the query payload
-// -----------------------------------------------------------
+// Mock data in place of real backend data
 const ALL_SPACES = [
   {
     name: "Space 1",
@@ -40,6 +37,7 @@ const ALL_SPACES = [
     distance: 1.2,
   },
 ];
+//
 
 type SortOption = "Relevance" | "Distance";
 type ViewMode = "List" | "Map";

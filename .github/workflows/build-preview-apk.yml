@@ -11,9 +11,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
-    if: |
-      ${{ github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' }}
+
+    if: >
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push'
 
     steps:
       - name: Checkout repo
@@ -34,12 +35,28 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Cache Expo prebuild
+        uses: actions/cache@v4
+        id: expo-prebuild-cache
+        with:
+          path: android
+          key: expo-prebuild-${{ runner.os }}-${{ hashFiles('package-lock.json', 'app.json', 'app.config.js', 'app.config.ts') }}
+
       - name: Expo Prebuild
+        if: steps.expo-prebuild-cache.outputs.cache-hit != 'true'
         run: npx expo prebuild --platform android --clean
+
+      - name: Setup Gradle
+        uses: gradle/actions/setup-gradle@v4
 
       - name: Build APK
         working-directory: android
-        run: ./gradlew assembleRelease
+        run: |
+          ./gradlew assembleRelease \
+            --build-cache \
+            --parallel \
+            --configuration-cache \
+            --no-daemon
 
       - name: Upload APK as GitHub Artifact
         uses: actions/upload-artifact@v4
