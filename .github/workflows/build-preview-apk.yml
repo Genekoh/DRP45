@@ -1,4 +1,4 @@
-name: Build Android APK (Preview Build) on merge/push to main
+name: Build Android APK (Preview Build)
 
 on:
   workflow_run:
@@ -11,6 +11,10 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    if: ${{ github.event.workflow_run.conclusion == 'success' }}
+
+    outputs:
+      apk-name: ${{ steps.set-apk-name.outputs.APK_NAME }} # ← pass apk filename to upload job
 
     steps:
       - name: Checkout repo
@@ -38,12 +42,32 @@ jobs:
           echo "BUILD_URL=$BUILD_URL" >> $GITHUB_OUTPUT
 
       - name: Download APK from EAS
+        id: set-apk-name
         run: |
-          curl -L -o app-development.apk "${{ steps.build.outputs.BUILD_URL }}"
+          APK_NAME=app-preview-${{ github.sha }}.apk
+          curl -L -o $APK_NAME "${{ steps.build.outputs.BUILD_URL }}"
+          echo "APK_NAME=$APK_NAME" >> $GITHUB_OUTPUT
+
+      - name: Save APK as cache for upload job
+        uses: actions/cache/save@v4
+        with:
+          path: app-preview-${{ github.sha }}.apk
+          key: apk-${{ github.sha }}
+
+  upload:
+    runs-on: ubuntu-latest
+    needs: build # ← only runs after build job completes successfully
+
+    steps:
+      - name: Restore APK from cache
+        uses: actions/cache/restore@v4
+        with:
+          path: app-preview-${{ github.sha }}.apk
+          key: apk-${{ github.sha }}
 
       - name: Upload APK as GitHub Artifact
         uses: actions/upload-artifact@v4
         with:
           name: app-preview-${{ github.sha }}
-          path: app-preview.apk
+          path: app-preview-${{ github.sha }}.apk
           retention-days: 30
