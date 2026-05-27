@@ -1,5 +1,4 @@
-# .github/workflows/ci.yml
-name: CI Checks
+name: CI Checks on merge/push to main
 
 on:
   pull_request:
