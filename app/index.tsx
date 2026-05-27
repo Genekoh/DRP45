@@ -219,6 +219,7 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#333",
     minWidth: 60,
+    maxWidth: 80,
     textAlign: "center",
   },
   timeDash: {

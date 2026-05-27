@@ -89,7 +89,9 @@ export default function ResultsScreen() {
       {(activeFilters.length > 0 || params.query) && (
         <View style={styles.summaryBox}>
           {params.query ? (
-            <Text style={styles.summaryText}>🔍 "{params.query}"</Text>
+            <Text style={styles.summaryText}>
+              🔍 &quot;{params.query}&quot;
+            </Text>
           ) : null}
           <Text style={styles.summaryText}>
             👥 Group: {groupSize} · 🕐 {params.startTime} — {params.endTime}
