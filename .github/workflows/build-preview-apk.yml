@@ -1,4 +1,4 @@
-name: Build Android APK (Development Build)
+name: Build Android APK (Preview Build) on merge/push to main
 
 on:
   pull_request:
@@ -32,7 +32,7 @@ jobs:
       - name: Build Android
         id: build
         run: |
-          BUILD_URL=$(eas build --platform android --profile development --non-interactive --json | jq -r '.[0].artifacts.buildUrl')
+          BUILD_URL=$(eas build --platform android --profile preview --non-interactive --json | jq -r '.[0].artifacts.buildUrl')
           echo "BUILD_URL=$BUILD_URL" >> $GITHUB_OUTPUT
 
       - name: Download APK from EAS
@@ -42,6 +42,6 @@ jobs:
       - name: Upload APK as GitHub Artifact
         uses: actions/upload-artifact@v4
         with:
-          name: app-development-${{ github.sha }}
-          path: app-development.apk
+          name: app-preview-${{ github.sha }}
+          path: app-preview.apk
           retention-days: 30
