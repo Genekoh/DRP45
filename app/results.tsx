@@ -2,6 +2,7 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
@@ -53,7 +54,7 @@ export default function ResultsScreen() {
     endTime: string;
   }>();
 
-  const { crowdnessMap } = useCrowdness();
+  const { crowdnessMap, loading } = useCrowdness();
 
   const activeFilters = params.filters
     ? params.filters.split(",").filter(Boolean)
@@ -123,42 +124,49 @@ export default function ResultsScreen() {
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.list}>
-        {viewMode === "List" ? (
-          sortedSpaces.length > 0 ? (
-            sortedSpaces.map((space) => (
-              <TouchableOpacity
-                key={space.id}
-                activeOpacity={0.8}
-                onPress={() =>
-                  router.push({ pathname: "/space/[id]", params: { id: space.id } })
-                }
-              >
-                <SpaceCard
-                  {...space}
-                  crowdness={crowdnessMap[space.id] ?? "lots"}
-                />
-              </TouchableOpacity>
-            ))
+      {loading ? (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color="#333" />
+          <Text style={styles.loadingText}>Fetching live data...</Text>
+        </View>
+      ) : (
+        <ScrollView contentContainerStyle={styles.list}>
+          {viewMode === "List" ? (
+            sortedSpaces.length > 0 ? (
+              sortedSpaces.map((space) => (
+                <TouchableOpacity
+                  key={space.id}
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    router.push({ pathname: "/space/[id]", params: { id: space.id } })
+                  }
+                >
+                  <SpaceCard
+                    {...space}
+                    crowdness={crowdnessMap[space.id] ?? "lots"}
+                  />
+                </TouchableOpacity>
+              ))
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyIcon}>🔍</Text>
+                <Text style={styles.emptyTitle}>No spaces found</Text>
+                <Text style={styles.emptySubtitle}>
+                  Try adjusting your filters or search query
+                </Text>
+                <TouchableOpacity style={styles.backToSearchBtn} onPress={() => router.back()}>
+                  <Text style={styles.backToSearchText}>← Back to Search</Text>
+                </TouchableOpacity>
+              </View>
+            )
           ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>🔍</Text>
-              <Text style={styles.emptyTitle}>No spaces found</Text>
-              <Text style={styles.emptySubtitle}>
-                Try adjusting your filters or search query
-              </Text>
-              <TouchableOpacity style={styles.backToSearchBtn} onPress={() => router.back()}>
-                <Text style={styles.backToSearchText}>← Back to Search</Text>
-              </TouchableOpacity>
+            <View style={styles.mapPlaceholder}>
+              <Text style={styles.mapText}>🗺️ Map View</Text>
+              <Text style={styles.mapSubText}>Showing {sortedSpaces.length} spaces nearby</Text>
             </View>
-          )
-        ) : (
-          <View style={styles.mapPlaceholder}>
-            <Text style={styles.mapText}>🗺️ Map View</Text>
-            <Text style={styles.mapSubText}>Showing {sortedSpaces.length} spaces nearby</Text>
-          </View>
-        )}
-      </ScrollView>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -185,6 +193,8 @@ const styles = StyleSheet.create({
   sortLabel: { fontSize: 14, color: "#444" },
   sortValue: { fontSize: 14, fontWeight: "700", color: "#111" },
   resultCount: { marginLeft: "auto", fontSize: 13, color: "#888" },
+  loadingBox: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
+  loadingText: { fontSize: 14, color: "#888" },
   list: { paddingBottom: 40 },
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyIcon: { fontSize: 48 },
