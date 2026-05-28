@@ -4,6 +4,8 @@ import { router } from "expo-router";
 import * as Location from "expo-location";
 import { useState, useEffect } from "react";
 import {
+  ActivityIndicator,
+  Modal,
   Platform,
   ScrollView,
   StyleSheet,
@@ -26,24 +28,40 @@ export default function HomeScreen() {
   const [startTime, setStartTime] = useState("00:00");
   const [endTime, setEndTime] = useState("00:00");
   const [location, setLocation] = useState<string>("Current Location");
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [customLocation, setCustomLocation] = useState("");
+  const [loadingLocation, setLoadingLocation] = useState(false);
 
   useEffect(() => {
-    (async () => {
+    fetchCurrentLocation();
+  }, []);
+
+  const fetchCurrentLocation = async () => {
+    setLoadingLocation(true);
+    try {
       const { status } = await Location.requestForegroundPermissionsAsync();
       if (status === "granted") {
         const loc = await Location.getCurrentPositionAsync({});
         const [address] = await Location.reverseGeocodeAsync(loc.coords);
         setLocation(address?.city || address?.district || "Current Location");
       }
-    })();
-  }, []);
+    } catch (e) {
+      setLocation("Current Location");
+    }
+    setLoadingLocation(false);
+  };
 
-  const pickLocation = async () => {
-    const { status } = await Location.requestForegroundPermissionsAsync();
-    if (status !== "granted") return;
-    const loc = await Location.getCurrentPositionAsync({});
-    const [address] = await Location.reverseGeocodeAsync(loc.coords);
-    setLocation(address?.city || address?.district || "Current Location");
+  const handleUseCurrentLocation = async () => {
+    setShowLocationModal(false);
+    await fetchCurrentLocation();
+  };
+
+  const handleUseCustomLocation = () => {
+    if (customLocation.trim()) {
+      setLocation(customLocation.trim());
+      setCustomLocation("");
+      setShowLocationModal(false);
+    }
   };
 
   const toggleFilter = (label: string) => {
@@ -88,12 +106,82 @@ export default function HomeScreen() {
 
         <TouchableOpacity
           style={styles.locationButton}
-          onPress={pickLocation}
+          onPress={() => setShowLocationModal(true)}
           activeOpacity={0.7}
         >
-          <Ionicons name="location-sharp" size={20} color="#555" />
+          {loadingLocation ? (
+            <ActivityIndicator size="small" color="#555" />
+          ) : (
+            <Ionicons name="location-sharp" size={20} color="#555" />
+          )}
         </TouchableOpacity>
       </View>
+
+      {/* Show selected location */}
+      {location !== "Current Location" || !loadingLocation ? (
+        <TouchableOpacity onPress={() => setShowLocationModal(true)}>
+          <Text style={styles.locationLabel}>
+            <Ionicons name="location-outline" size={13} color="#888" /> {location}
+          </Text>
+        </TouchableOpacity>
+      ) : null}
+
+      {/* Location Picker Modal */}
+      <Modal
+        visible={showLocationModal}
+        transparent
+        animationType="slide"
+        onRequestClose={() => setShowLocationModal(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowLocationModal(false)}
+        >
+          <View style={styles.modalSheet} onStartShouldSetResponder={() => true}>
+            <Text style={styles.modalTitle}>Choose Location</Text>
+
+            {/* Use Current Location */}
+            <TouchableOpacity
+              style={styles.modalOption}
+              onPress={handleUseCurrentLocation}
+            >
+              <Ionicons name="locate" size={20} color="#333" style={{ marginRight: 12 }} />
+              <Text style={styles.modalOptionText}>Use current location</Text>
+            </TouchableOpacity>
+
+            <View style={styles.divider} />
+
+            {/* Enter Custom Location */}
+            <Text style={styles.modalSubLabel}>Or enter a location:</Text>
+            <View style={styles.customInputRow}>
+              <TextInput
+                style={styles.customInput}
+                placeholder="e.g. Central Library, London"
+                placeholderTextColor="#aaa"
+                value={customLocation}
+                onChangeText={setCustomLocation}
+                returnKeyType="done"
+                onSubmitEditing={handleUseCustomLocation}
+              />
+              <TouchableOpacity
+                style={styles.customInputButton}
+                onPress={handleUseCustomLocation}
+              >
+                <Ionicons name="arrow-forward" size={18} color="#fff" />
+              </TouchableOpacity>
+            </View>
+
+            {/* Cancel */}
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowLocationModal(false)}
+            >
+              <Text style={styles.cancelText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </TouchableOpacity>
+      </Modal>
 
       {/* Group Size Slider */}
       <Text style={styles.sectionLabel}>Group size</Text>
@@ -182,7 +270,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 10,
-    marginBottom: 24,
+    marginBottom: 6,
   },
   searchBar: {
     flex: 1,
@@ -209,6 +297,82 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     alignItems: "center",
     justifyContent: "center",
+  },
+  locationLabel: {
+    fontSize: 12,
+    color: "#888",
+    marginBottom: 20,
+    marginLeft: 4,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0,0,0,0.4)",
+    justifyContent: "flex-end",
+  },
+  modalSheet: {
+    backgroundColor: "#fff",
+    borderTopLeftRadius: 20,
+    borderTopRightRadius: 20,
+    padding: 24,
+    paddingBottom: Platform.OS === "ios" ? 40 : 24,
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#333",
+    marginBottom: 20,
+  },
+  modalOption: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 14,
+  },
+  modalOptionText: {
+    fontSize: 16,
+    color: "#333",
+  },
+  divider: {
+    height: 1,
+    backgroundColor: "#eee",
+    marginVertical: 12,
+  },
+  modalSubLabel: {
+    fontSize: 14,
+    color: "#666",
+    marginBottom: 10,
+  },
+  customInputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 20,
+  },
+  customInput: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: "#ccc",
+    borderRadius: 10,
+    paddingHorizontal: 14,
+    paddingVertical: Platform.OS === "ios" ? 12 : 8,
+    fontSize: 15,
+    color: "#333",
+    backgroundColor: "#f9f9f9",
+  },
+  customInputButton: {
+    width: 44,
+    height: 44,
+    backgroundColor: "#333",
+    borderRadius: 10,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  cancelButton: {
+    alignItems: "center",
+    paddingVertical: 12,
+  },
+  cancelText: {
+    fontSize: 15,
+    color: "#888",
   },
   sectionLabel: {
     fontSize: 14,
