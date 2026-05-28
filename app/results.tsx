@@ -2,42 +2,53 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import React, { useState } from "react";
 import {
+  ActivityIndicator,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
 } from "react-native";
+import MapView, { Marker, Callout } from "react-native-maps";
 import SpaceCard from "../components/SpaceCard";
 import { useCrowdness } from "../context/CrowdnessContext";
 
 export const ALL_SPACES = [
   {
     id: "1",
-    name: "Space 1",
-    openingHrs: "7:00 - 22:00",
-    safetyLevel: 4,
-    features: ["Quiet zone", "Free WiFi", "Charging ports"],
-    tags: ["quiet", "charging", "free"],
+    name: "Starbucks",
+    address: "South Kensington, SW7 4PL",
+    openingHrs: "6:30 - 21:00",
+    safetyLevel: 3,
+    features: ["Free WiFi", "Charging ports", "Food available"],
+    tags: ["charging", "free", "food available"],
     distance: 0.3,
+    latitude: 51.4941,
+    longitude: -0.1738,
   },
   {
     id: "2",
-    name: "Space 2",
-    openingHrs: "8:00 - 20:00",
-    safetyLevel: 3,
-    features: ["AC", "Food available", "Laptop friendly"],
-    tags: ["AC", "food available", "laptop"],
+    name: "Kensington Central Library",
+    address: "Phillimore Walk, W8 7RX",
+    openingHrs: "9:00 - 20:00",
+    safetyLevel: 5,
+    features: ["Quiet zone", "Free", "Laptop friendly"],
+    tags: ["quiet", "free", "laptop"],
     distance: 0.8,
+    latitude: 51.5012,
+    longitude: -0.1932,
   },
   {
     id: "3",
-    name: "Space 3",
-    openingHrs: "9:00 - 18:00",
-    safetyLevel: 5,
-    features: ["Laptop friendly", "Free", "Quiet"],
-    tags: ["laptop", "free", "quiet"],
-    distance: 1.2,
+    name: "Paris Baguette",
+    address: "Kensington High St, W8 6SU",
+    openingHrs: "7:30 - 21:00",
+    safetyLevel: 3,
+    features: ["Food available", "AC", "Laptop friendly"],
+    tags: ["food available", "AC", "laptop"],
+    distance: 1.0,
+    latitude: 51.5008,
+    longitude: -0.1918,
   },
 ];
 
@@ -53,7 +64,7 @@ export default function ResultsScreen() {
     endTime: string;
   }>();
 
-  const { crowdnessMap } = useCrowdness();
+  const { crowdnessMap, loading } = useCrowdness();
 
   const activeFilters = params.filters
     ? params.filters.split(",").filter(Boolean)
@@ -71,6 +82,12 @@ export default function ResultsScreen() {
   const sortedSpaces = [...filteredSpaces].sort((a, b) =>
     sortBy === "Distance" ? a.distance - b.distance : 0,
   );
+
+  const CROWDNESS_COLOR: Record<string, string> = {
+    lots: "#4caf50",
+    limited: "#ff9800",
+    none: "#f44336",
+  };
 
   return (
     <View style={styles.container}>
@@ -123,9 +140,41 @@ export default function ResultsScreen() {
         </Text>
       </View>
 
-      <ScrollView contentContainerStyle={styles.list}>
-        {viewMode === "List" ? (
-          sortedSpaces.length > 0 ? (
+      {loading ? (
+        <View style={styles.loadingBox}>
+          <ActivityIndicator size="large" color="#333" />
+          <Text style={styles.loadingText}>Fetching live data...</Text>
+        </View>
+      ) : viewMode === "Map" ? (
+        <MapView
+          style={styles.map}
+          initialRegion={{
+            latitude: 51.4980,
+            longitude: -0.1840,
+            latitudeDelta: 0.02,
+            longitudeDelta: 0.02,
+          }}
+        >
+          {sortedSpaces.map((space) => (
+            <Marker
+              key={space.id}
+              coordinate={{ latitude: space.latitude, longitude: space.longitude }}
+              pinColor={CROWDNESS_COLOR[crowdnessMap[space.id] ?? "lots"]}
+            >
+              <Callout onPress={() => router.push({ pathname: "/space/[id]", params: { id: space.id } })}>
+                <View style={styles.callout}>
+                  <Text style={styles.calloutTitle}>{space.name}</Text>
+                  <Text style={styles.calloutSub}>{space.address}</Text>
+                  <Text style={styles.calloutHrs}>{space.openingHrs}</Text>
+                  <Text style={styles.calloutLink}>Tap to view details →</Text>
+                </View>
+              </Callout>
+            </Marker>
+          ))}
+        </MapView>
+      ) : (
+        <ScrollView contentContainerStyle={styles.list}>
+          {sortedSpaces.length > 0 ? (
             sortedSpaces.map((space) => (
               <TouchableOpacity
                 key={space.id}
@@ -151,14 +200,9 @@ export default function ResultsScreen() {
                 <Text style={styles.backToSearchText}>← Back to Search</Text>
               </TouchableOpacity>
             </View>
-          )
-        ) : (
-          <View style={styles.mapPlaceholder}>
-            <Text style={styles.mapText}>🗺️ Map View</Text>
-            <Text style={styles.mapSubText}>Showing {sortedSpaces.length} spaces nearby</Text>
-          </View>
-        )}
-      </ScrollView>
+          )}
+        </ScrollView>
+      )}
     </View>
   );
 }
@@ -185,6 +229,14 @@ const styles = StyleSheet.create({
   sortLabel: { fontSize: 14, color: "#444" },
   sortValue: { fontSize: 14, fontWeight: "700", color: "#111" },
   resultCount: { marginLeft: "auto", fontSize: 13, color: "#888" },
+  loadingBox: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
+  loadingText: { fontSize: 14, color: "#888" },
+  map: { flex: 1, borderRadius: 12, overflow: "hidden" },
+  callout: { width: 200, padding: 8 },
+  calloutTitle: { fontSize: 14, fontWeight: "700", color: "#111", marginBottom: 2 },
+  calloutSub: { fontSize: 12, color: "#666", marginBottom: 2 },
+  calloutHrs: { fontSize: 12, color: "#888", marginBottom: 4 },
+  calloutLink: { fontSize: 12, color: "#007AFF", fontWeight: "600" },
   list: { paddingBottom: 40 },
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyIcon: { fontSize: 48 },
@@ -195,10 +247,4 @@ const styles = StyleSheet.create({
     borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24,
   },
   backToSearchText: { fontSize: 14, fontWeight: "600", color: "#333" },
-  mapPlaceholder: {
-    height: 400, justifyContent: "center", alignItems: "center",
-    backgroundColor: "#e0e0e0", borderRadius: 12, gap: 8,
-  },
-  mapText: { fontSize: 20, fontWeight: "700", color: "#555" },
-  mapSubText: { fontSize: 14, color: "#777" },
 });
