@@ -10,34 +10,39 @@ import {
 } from "react-native";
 import SpaceCard from "../components/SpaceCard";
 
-// Mock data in place of real backend data
-const ALL_SPACES = [
+// Mock data — crowdness defaults to "lots"
+export const ALL_SPACES = [
   {
+    id: "1",
     name: "Space 1",
     openingHrs: "7:00 - 22:00",
     safetyLevel: 4,
     features: ["Quiet zone", "Free WiFi", "Charging ports"],
     tags: ["quiet", "charging", "free"],
     distance: 0.3,
+    crowdness: "lots" as "lots" | "limited" | "none",
   },
   {
+    id: "2",
     name: "Space 2",
     openingHrs: "8:00 - 20:00",
     safetyLevel: 3,
     features: ["AC", "Food available", "Laptop friendly"],
     tags: ["AC", "food available", "laptop"],
     distance: 0.8,
+    crowdness: "lots" as "lots" | "limited" | "none",
   },
   {
+    id: "3",
     name: "Space 3",
     openingHrs: "9:00 - 18:00",
     safetyLevel: 5,
     features: ["Laptop friendly", "Free", "Quiet"],
     tags: ["laptop", "free", "quiet"],
     distance: 1.2,
+    crowdness: "lots" as "lots" | "limited" | "none",
   },
 ];
-//
 
 type SortOption = "Relevance" | "Distance";
 type ViewMode = "List" | "Map";
@@ -51,7 +56,6 @@ export default function ResultsScreen() {
     endTime: string;
   }>();
 
-  // Parse params back to usable types
   const activeFilters = params.filters
     ? params.filters.split(",").filter(Boolean)
     : [];
@@ -60,10 +64,6 @@ export default function ResultsScreen() {
   const [viewMode, setViewMode] = useState<ViewMode>("List");
   const [sortBy, setSortBy] = useState<SortOption>("Relevance");
 
-  // ----------------------------------------------------------
-  // Simple client-side filter: show spaces that match ANY
-  // selected filter tag (or all spaces if no filters selected)
-  // ----------------------------------------------------------
   const filteredSpaces = ALL_SPACES.filter((space) => {
     if (activeFilters.length === 0) return true;
     return activeFilters.some((f) => space.tags.includes(f));
@@ -147,8 +147,19 @@ export default function ResultsScreen() {
       <ScrollView contentContainerStyle={styles.list}>
         {viewMode === "List" ? (
           sortedSpaces.length > 0 ? (
-            sortedSpaces.map((space, index) => (
-              <SpaceCard key={index} {...space} />
+            sortedSpaces.map((space) => (
+              <TouchableOpacity
+                key={space.id}
+                activeOpacity={0.8}
+                onPress={() =>
+                  router.push({
+                    pathname: "/space/[id]",
+                    params: { id: space.id },
+                  })
+                }
+              >
+                <SpaceCard {...space} />
+              </TouchableOpacity>
             ))
           ) : (
             <View style={styles.emptyState}>
