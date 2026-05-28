@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 import { ALL_SPACES } from "../results";
-import { CrowdnessLevel, useCrowdness } from "../../context/CrowdnessContext";
+import { useCrowdness, CrowdnessLevel } from "../../context/CrowdnessContext";
 
 const CROWDNESS_OPTIONS: { value: CrowdnessLevel; label: string; color: string }[] = [
   { value: "lots", label: "Lots of seats", color: "#4caf50" },
@@ -24,6 +24,7 @@ export default function SpaceDetailScreen() {
   const space = ALL_SPACES.find((s) => s.id === id);
   const { crowdnessMap, setCrowdness } = useCrowdness();
   const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   if (!space) {
     return (
@@ -38,6 +39,13 @@ export default function SpaceDetailScreen() {
 
   const crowdness = crowdnessMap[space.id] ?? "lots";
   const currentOption = CROWDNESS_OPTIONS.find((o) => o.value === crowdness)!;
+
+  const handleSetCrowdness = async (value: CrowdnessLevel) => {
+    setSaving(true);
+    await setCrowdness(space.id, value);
+    setSaving(false);
+    setShowModal(false);
+  };
 
   return (
     <View style={styles.container}>
@@ -137,7 +145,7 @@ export default function SpaceDetailScreen() {
         <TouchableOpacity
           style={styles.modalOverlay}
           activeOpacity={1}
-          onPress={() => setShowModal(false)}
+          onPress={() => !saving && setShowModal(false)}
         >
           <View style={styles.modalSheet} onStartShouldSetResponder={() => true}>
             <Text style={styles.modalTitle}>How crowded is it?</Text>
@@ -153,10 +161,8 @@ export default function SpaceDetailScreen() {
                     backgroundColor: option.color + "11",
                   },
                 ]}
-                onPress={() => {
-                  setCrowdness(space.id, option.value);
-                  setShowModal(false);
-                }}
+                onPress={() => handleSetCrowdness(option.value)}
+                disabled={saving}
               >
                 <View style={[styles.optionDot, { backgroundColor: option.color }]} />
                 <Text style={[
@@ -171,7 +177,15 @@ export default function SpaceDetailScreen() {
               </TouchableOpacity>
             ))}
 
-            <TouchableOpacity style={styles.cancelButton} onPress={() => setShowModal(false)}>
+            {saving && (
+              <Text style={styles.savingText}>Saving to database...</Text>
+            )}
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => setShowModal(false)}
+              disabled={saving}
+            >
               <Text style={styles.cancelText}>Cancel</Text>
             </TouchableOpacity>
           </View>
@@ -241,6 +255,7 @@ const styles = StyleSheet.create({
   },
   optionDot: { width: 14, height: 14, borderRadius: 7 },
   optionLabel: { fontSize: 16, color: "#333" },
+  savingText: { textAlign: "center", color: "#888", fontSize: 13, marginBottom: 8 },
   cancelButton: { alignItems: "center", paddingVertical: 12, marginTop: 4 },
   cancelText: { fontSize: 15, color: "#888" },
 });
