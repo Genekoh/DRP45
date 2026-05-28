@@ -1,18 +1,34 @@
 import React from "react";
 import { StyleSheet, Text, View } from "react-native";
 
+export type CrowdnessLevel = "lots" | "limited" | "none";
+
 interface SpaceCardProps {
   name: string;
   openingHrs: string;
   safetyLevel: number;
   features: string[];
+  crowdness: CrowdnessLevel;
 }
+
+const CROWDNESS_LABEL: Record<CrowdnessLevel, string> = {
+  lots: "Lots of seats",
+  limited: "Limited seats",
+  none: "No seats",
+};
+
+const CROWDNESS_COLOR: Record<CrowdnessLevel, string> = {
+  lots: "#4caf50",
+  limited: "#ff9800",
+  none: "#f44336",
+};
 
 export default function SpaceCard({
   name,
   openingHrs,
   safetyLevel,
   features,
+  crowdness,
 }: SpaceCardProps) {
   return (
     <View style={styles.card}>
@@ -22,10 +38,7 @@ export default function SpaceCard({
         <Text style={styles.detail}>
           Safety level:{" "}
           {Array.from({ length: 5 }).map((_, i) => (
-            <Text
-              key={i}
-              style={{ color: i < safetyLevel ? "#f5a623" : "#ccc" }}
-            >
+            <Text key={i} style={{ color: i < safetyLevel ? "#f5a623" : "#ccc" }}>
               ●
             </Text>
           ))}
@@ -35,6 +48,12 @@ export default function SpaceCard({
             • {f}
           </Text>
         ))}
+        <View style={[styles.crowdnessBadge, { backgroundColor: CROWDNESS_COLOR[crowdness] + "22" }]}>
+          <View style={[styles.crowdnessDot, { backgroundColor: CROWDNESS_COLOR[crowdness] }]} />
+          <Text style={[styles.crowdnessText, { color: CROWDNESS_COLOR[crowdness] }]}>
+            {CROWDNESS_LABEL[crowdness]}
+          </Text>
+        </View>
       </View>
 
       {/* Placeholder image area */}
@@ -78,6 +97,25 @@ const styles = StyleSheet.create({
   feature: {
     fontSize: 12,
     color: "#555",
+  },
+  crowdnessBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 8,
+    paddingVertical: 4,
+    paddingHorizontal: 8,
+    borderRadius: 20,
+    alignSelf: "flex-start",
+    gap: 6,
+  },
+  crowdnessDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+  },
+  crowdnessText: {
+    fontSize: 12,
+    fontWeight: "600",
   },
   imagePlaceholder: {
     width: 80,

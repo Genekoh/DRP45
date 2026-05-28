@@ -1,5 +1,10 @@
 import { Stack } from "expo-router";
+import { CrowdnessProvider } from "../context/CrowdnessContext";
 
 export default function RootLayout() {
-  return <Stack screenOptions={{ headerShown: false }} />;
+  return (
+    <CrowdnessProvider>
+      <Stack screenOptions={{ headerShown: false }} />
+    </CrowdnessProvider>
+  );
 }
