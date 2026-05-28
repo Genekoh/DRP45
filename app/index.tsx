@@ -1,7 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
 import { router } from "expo-router";
-import { useState } from "react";
+import * as Location from "expo-location";
+import { useState, useEffect } from "react";
 import {
   Platform,
   ScrollView,
@@ -24,6 +25,26 @@ export default function HomeScreen() {
   const [selectedFilters, setSelectedFilters] = useState<string[]>([]);
   const [startTime, setStartTime] = useState("00:00");
   const [endTime, setEndTime] = useState("00:00");
+  const [location, setLocation] = useState<string>("Current Location");
+
+  useEffect(() => {
+    (async () => {
+      const { status } = await Location.requestForegroundPermissionsAsync();
+      if (status === "granted") {
+        const loc = await Location.getCurrentPositionAsync({});
+        const [address] = await Location.reverseGeocodeAsync(loc.coords);
+        setLocation(address?.city || address?.district || "Current Location");
+      }
+    })();
+  }, []);
+
+  const pickLocation = async () => {
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== "granted") return;
+    const loc = await Location.getCurrentPositionAsync({});
+    const [address] = await Location.reverseGeocodeAsync(loc.coords);
+    setLocation(address?.city || address?.district || "Current Location");
+  };
 
   const toggleFilter = (label: string) => {
     setSelectedFilters((prev) =>
@@ -32,36 +53,46 @@ export default function HomeScreen() {
   };
 
   const handleApply = () => {
-    // Pass all filter state to results screen as route params
     router.push({
       pathname: "/results",
       params: {
         query,
         groupSize: String(groupSize),
-        filters: selectedFilters.join(","), // array → comma-separated string
+        filters: selectedFilters.join(","),
         startTime,
         endTime,
+        location,
       },
     });
   };
 
   return (
     <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      {/* Search Bar */}
-      <View style={styles.searchBar}>
-        <Ionicons
-          name="search"
-          size={18}
-          color="#888"
-          style={{ marginRight: 8 }}
-        />
-        <TextInput
-          style={styles.searchInput}
-          placeholder="input your requirement"
-          placeholderTextColor="#aaa"
-          value={query}
-          onChangeText={setQuery}
-        />
+      {/* Search Bar + Location Button */}
+      <View style={styles.searchRow}>
+        <View style={styles.searchBar}>
+          <Ionicons
+            name="search"
+            size={18}
+            color="#888"
+            style={{ marginRight: 8 }}
+          />
+          <TextInput
+            style={styles.searchInput}
+            placeholder="input your requirement"
+            placeholderTextColor="#aaa"
+            value={query}
+            onChangeText={setQuery}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={styles.locationButton}
+          onPress={pickLocation}
+          activeOpacity={0.7}
+        >
+          <Ionicons name="location-sharp" size={20} color="#555" />
+        </TouchableOpacity>
       </View>
 
       {/* Group Size Slider */}
@@ -147,7 +178,14 @@ const styles = StyleSheet.create({
     padding: 20,
     paddingTop: 60,
   },
+  searchRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 10,
+    marginBottom: 24,
+  },
   searchBar: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#fff",
@@ -156,12 +194,21 @@ const styles = StyleSheet.create({
     borderColor: "#ccc",
     paddingHorizontal: 14,
     paddingVertical: Platform.OS === "ios" ? 12 : 8,
-    marginBottom: 24,
   },
   searchInput: {
     flex: 1,
     fontSize: 15,
     color: "#333",
+  },
+  locationButton: {
+    width: 48,
+    height: 48,
+    backgroundColor: "#fff",
+    borderRadius: 12,
+    borderWidth: 1.5,
+    borderColor: "#ccc",
+    alignItems: "center",
+    justifyContent: "center",
   },
   sectionLabel: {
     fontSize: 14,
