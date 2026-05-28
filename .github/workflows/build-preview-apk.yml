@@ -55,7 +55,6 @@ jobs:
           ./gradlew assembleRelease \
             --build-cache \
             --parallel \
-            --configuration-cache \
             --no-daemon
 
       - name: Upload APK as GitHub Artifact
