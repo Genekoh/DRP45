@@ -21,16 +21,25 @@
         "backgroundImage": "./assets/images/android-icon-background.png",
         "monochromeImage": "./assets/images/android-icon-monochrome.png"
       },
-      "permissions": ["ACCESS_FINE_LOCATION", "ACCESS_COARSE_LOCATION"],
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION"
+      ],
       "edgeToEdgeEnabled": true,
       "predictiveBackGestureEnabled": false,
-      "package": "com.genekoh.DRP45"
+      "package": "com.genekoh.DRP45",
+      "config": {
+        "googleMaps": {
+          "apiKey": "AIzaSyCiRWefTmlKVfyy8ql98nAgk_ldEN55fTk"
+        }
+      }
     },
     "web": {
       "output": "static",
       "favicon": "./assets/images/favicon.png"
     },
     "plugins": [
+      "react-native-maps",
       "expo-router",
       "expo-location",
       [
