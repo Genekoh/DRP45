@@ -9,7 +9,7 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import MapView, { Marker, Callout } from "react-native-maps";
+import MapView, { Callout, Marker } from "react-native-maps";
 import SpaceCard from "../components/SpaceCard";
 import { useCrowdness } from "../context/CrowdnessContext";
 

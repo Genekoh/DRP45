@@ -1,8 +1,8 @@
 import { Ionicons } from "@expo/vector-icons";
 import Slider from "@react-native-community/slider";
-import { router } from "expo-router";
 import * as Location from "expo-location";
-import { useState, useEffect } from "react";
+import { router } from "expo-router";
+import { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
@@ -17,7 +17,7 @@ import {
 import FilterChip from "../components/FilterChip";
 
 const FILTER_OPTIONS = [
-  ["quiet", "charging", "laptop"],
+  ["quiet", "charging", "laptop change"],
   ["AC", "free", "food available"],
 ];
 
