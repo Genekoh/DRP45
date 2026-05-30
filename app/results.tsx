@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -11,46 +11,7 @@ import {
 } from "react-native";
 import MapView, { Callout, Marker } from "react-native-maps";
 import SpaceCard from "../components/SpaceCard";
-import { useCrowdness } from "../context/CrowdnessContext";
-
-export const ALL_SPACES = [
-  {
-    id: "1",
-    name: "Starbucks",
-    address: "South Kensington, SW7 4PL",
-    openingHrs: "6:30 - 21:00",
-    safetyLevel: 3,
-    features: ["Free WiFi", "Charging ports", "Food available"],
-    tags: ["charging", "free", "food available"],
-    distance: 0.3,
-    latitude: 51.4941,
-    longitude: -0.1738,
-  },
-  {
-    id: "2",
-    name: "Kensington Central Library",
-    address: "Phillimore Walk, W8 7RX",
-    openingHrs: "9:00 - 20:00",
-    safetyLevel: 5,
-    features: ["Quiet zone", "Free", "Laptop friendly"],
-    tags: ["quiet", "free", "laptop"],
-    distance: 0.8,
-    latitude: 51.5012,
-    longitude: -0.1932,
-  },
-  {
-    id: "3",
-    name: "Paris Baguette",
-    address: "Kensington High St, W8 6SU",
-    openingHrs: "7:30 - 21:00",
-    safetyLevel: 3,
-    features: ["Food available", "AC", "Laptop friendly"],
-    tags: ["food available", "AC", "laptop"],
-    distance: 1.0,
-    latitude: 51.5008,
-    longitude: -0.1918,
-  },
-];
+import { useCrowdness, CrowdnessPrediction } from "../context/CrowdnessContext";
 
 type SortOption = "Relevance" | "Distance";
 type ViewMode = "List" | "Map";
@@ -64,7 +25,8 @@ export default function ResultsScreen() {
     endTime: string;
   }>();
 
-  const { crowdnessMap, loading } = useCrowdness();
+  const { spaces, crowdnessMap, predictionsMap, getPredictionForSpace, loading: contextLoading } =
+    useCrowdness();
 
   const activeFilters = params.filters
     ? params.filters.split(",").filter(Boolean)
@@ -73,21 +35,92 @@ export default function ResultsScreen() {
 
   const [viewMode, setViewMode] = useState<ViewMode>("List");
   const [sortBy, setSortBy] = useState<SortOption>("Relevance");
+  const [loadingPredictions, setLoadingPredictions] = useState(true);
 
-  const filteredSpaces = ALL_SPACES.filter((space) => {
+  // Calculate distance from first space as reference (hardcoded for demo)
+  const referencePoint = { lat: 51.4980, lng: -0.1840 };
+
+  const calculateDistance = (lat: number, lng: number) => {
+    const R = 6371; // Earth's radius in km
+    const dLat = ((lat - referencePoint.lat) * Math.PI) / 180;
+    const dLng = ((lng - referencePoint.lng) * Math.PI) / 180;
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos((referencePoint.lat * Math.PI) / 180) *
+        Math.cos((lat * Math.PI) / 180) *
+        Math.sin(dLng / 2) *
+        Math.sin(dLng / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return parseFloat((R * c).toFixed(1));
+  };
+
+  // Filter and sort spaces
+  const filteredSpaces = spaces.filter((space) => {
     if (activeFilters.length === 0) return true;
     return activeFilters.some((f) => space.tags.includes(f));
   });
 
-  const sortedSpaces = [...filteredSpaces].sort((a, b) =>
-    sortBy === "Distance" ? a.distance - b.distance : 0,
-  );
+  const sortedSpaces = [...filteredSpaces]
+    .map((space) => ({
+      ...space,
+      distance: calculateDistance(space.latitude, space.longitude),
+    }))
+    .sort((a, b) =>
+      sortBy === "Distance" ? a.distance - b.distance : 0
+    );
 
-  const CROWDNESS_COLOR: Record<string, string> = {
-    lots: "#4caf50",
-    limited: "#ff9800",
-    none: "#f44336",
+  // Load predictions for all visible spaces
+  useEffect(() => {
+    async function loadPredictions() {
+      try {
+        setLoadingPredictions(true);
+        for (const space of sortedSpaces) {
+          if (!predictionsMap[space.id]) {
+            await getPredictionForSpace(space.id);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading predictions:", err);
+      } finally {
+        setLoadingPredictions(false);
+      }
+    }
+
+    if (sortedSpaces.length > 0) {
+      loadPredictions();
+    }
+  }, [sortedSpaces]);
+
+  const getCrowdnessColor = (prediction: CrowdnessPrediction | undefined) => {
+    if (!prediction) return "#9e9e9e"; // Gray for loading
+    switch (prediction.level) {
+      case "none":
+        return "#4caf50"; // Green
+      case "limited":
+        return "#ff9800"; // Orange
+      case "lots":
+        return "#f44336"; // Red
+      default:
+        return "#9e9e9e";
+    }
   };
+
+  const getSourceBadge = (source: string) => {
+    switch (source) {
+      case "google_live":
+        return "🔴 Live (Google)";
+      case "google_cache":
+        return "📊 Cached (Google)";
+      case "user_reports":
+        return "👥 User Reports";
+      case "not_enough_data":
+        return "❓ No Data";
+      default:
+        return source;
+    }
+  };
+
+  const loading = contextLoading || loadingPredictions;
 
   return (
     <View style={styles.container}>
@@ -155,40 +188,93 @@ export default function ResultsScreen() {
             longitudeDelta: 0.02,
           }}
         >
-          {sortedSpaces.map((space) => (
-            <Marker
-              key={space.id}
-              coordinate={{ latitude: space.latitude, longitude: space.longitude }}
-              pinColor={CROWDNESS_COLOR[crowdnessMap[space.id] ?? "lots"]}
-            >
-              <Callout onPress={() => router.push({ pathname: "/space/[id]", params: { id: space.id } })}>
-                <View style={styles.callout}>
-                  <Text style={styles.calloutTitle}>{space.name}</Text>
-                  <Text style={styles.calloutSub}>{space.address}</Text>
-                  <Text style={styles.calloutHrs}>{space.openingHrs}</Text>
-                  <Text style={styles.calloutLink}>Tap to view details →</Text>
-                </View>
-              </Callout>
-            </Marker>
-          ))}
+          {sortedSpaces.map((space) => {
+            const prediction = predictionsMap[space.id];
+            return (
+              <Marker
+                key={space.id}
+                coordinate={{ latitude: space.latitude, longitude: space.longitude }}
+                pinColor={getCrowdnessColor(prediction)}
+              >
+                <Callout
+                  onPress={() =>
+                    router.push({ pathname: "/space/[id]", params: { id: space.id } })
+                  }
+                >
+                  <View style={styles.callout}>
+                    <Text style={styles.calloutTitle}>{space.name}</Text>
+                    <Text style={styles.calloutSub}>{space.address}</Text>
+                    <Text style={styles.calloutHrs}>{space.opening_hrs}</Text>
+                    {prediction && (
+                      <>
+                        <Text style={styles.calloutPrediction}>
+                          {prediction.level.toUpperCase()} ({prediction.confidence}%)
+                        </Text>
+                        <Text style={styles.calloutSource}>
+                          {getSourceBadge(prediction.source)}
+                        </Text>
+                      </>
+                    )}
+                    <Text style={styles.calloutLink}>Tap to view details →</Text>
+                  </View>
+                </Callout>
+              </Marker>
+            );
+          })}
         </MapView>
       ) : (
         <ScrollView contentContainerStyle={styles.list}>
           {sortedSpaces.length > 0 ? (
-            sortedSpaces.map((space) => (
-              <TouchableOpacity
-                key={space.id}
-                activeOpacity={0.8}
-                onPress={() =>
-                  router.push({ pathname: "/space/[id]", params: { id: space.id } })
-                }
-              >
-                <SpaceCard
-                  {...space}
-                  crowdness={crowdnessMap[space.id] ?? "lots"}
-                />
-              </TouchableOpacity>
-            ))
+            sortedSpaces.map((space) => {
+              const prediction = predictionsMap[space.id];
+              return (
+                <TouchableOpacity
+                  key={space.id}
+                  activeOpacity={0.8}
+                  onPress={() =>
+                    router.push({ pathname: "/space/[id]", params: { id: space.id } })
+                  }
+                >
+                  <View style={styles.spaceCardWrapper}>
+                    <SpaceCard
+                      id={space.id}
+                      name={space.name}
+                      address={space.address}
+                      openingHrs={space.opening_hrs}
+                      safetyLevel={space.safety_level}
+                      features={space.features}
+                      tags={space.tags}
+                      distance={space.distance}
+                      latitude={space.latitude}
+                      longitude={space.longitude}
+                      crowdness={prediction?.level || "limited"}
+                    />
+                    {prediction && (
+                      <View style={styles.predictionOverlay}>
+                        <View
+                          style={[
+                            styles.predictionBadge,
+                            {
+                              backgroundColor: getCrowdnessColor(prediction),
+                            },
+                          ]}
+                        >
+                          <Text style={styles.predictionText}>
+                            {prediction.level.toUpperCase()}
+                          </Text>
+                          <Text style={styles.confidenceText}>
+                            {prediction.confidence}% confidence
+                          </Text>
+                          <Text style={styles.sourceText}>
+                            {getSourceBadge(prediction.source)}
+                          </Text>
+                        </View>
+                      </View>
+                    )}
+                  </View>
+                </TouchableOpacity>
+              );
+            })
           ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyIcon}>🔍</Text>
@@ -213,13 +299,23 @@ const styles = StyleSheet.create({
   backBtn: { marginRight: 12, padding: 4 },
   headerTitle: { fontSize: 20, fontWeight: "700", color: "#111" },
   summaryBox: {
-    backgroundColor: "#fff", borderRadius: 10, padding: 12,
-    marginBottom: 14, borderWidth: 1, borderColor: "#e0e0e0", gap: 4,
+    backgroundColor: "#fff",
+    borderRadius: 10,
+    padding: 12,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#e0e0e0",
+    gap: 4,
   },
   summaryText: { fontSize: 13, color: "#555" },
   toggleRow: {
-    flexDirection: "row", borderWidth: 1.5, borderColor: "#555",
-    borderRadius: 10, overflow: "hidden", alignSelf: "center", marginBottom: 16,
+    flexDirection: "row",
+    borderWidth: 1.5,
+    borderColor: "#555",
+    borderRadius: 10,
+    overflow: "hidden",
+    alignSelf: "center",
+    marginBottom: 16,
   },
   toggleBtn: { paddingVertical: 8, paddingHorizontal: 28, backgroundColor: "#fff" },
   toggleBtnActive: { backgroundColor: "#333" },
@@ -232,19 +328,40 @@ const styles = StyleSheet.create({
   loadingBox: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
   loadingText: { fontSize: 14, color: "#888" },
   map: { flex: 1, borderRadius: 12, overflow: "hidden" },
-  callout: { width: 200, padding: 8 },
+  callout: { width: 220, padding: 10 },
   calloutTitle: { fontSize: 14, fontWeight: "700", color: "#111", marginBottom: 2 },
   calloutSub: { fontSize: 12, color: "#666", marginBottom: 2 },
   calloutHrs: { fontSize: 12, color: "#888", marginBottom: 4 },
+  calloutPrediction: { fontSize: 12, fontWeight: "600", color: "#007AFF", marginBottom: 2 },
+  calloutSource: { fontSize: 11, color: "#666", marginBottom: 4 },
   calloutLink: { fontSize: 12, color: "#007AFF", fontWeight: "600" },
   list: { paddingBottom: 40 },
+  spaceCardWrapper: { marginBottom: 12, position: "relative" },
+  predictionOverlay: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    zIndex: 10,
+  },
+  predictionBadge: {
+    borderRadius: 8,
+    padding: 8,
+    alignItems: "flex-end",
+  },
+  predictionText: { fontSize: 12, fontWeight: "700", color: "#fff" },
+  confidenceText: { fontSize: 10, color: "#fff", marginTop: 2 },
+  sourceText: { fontSize: 9, color: "#fff", marginTop: 2 },
   emptyState: { alignItems: "center", paddingTop: 60, gap: 8 },
   emptyIcon: { fontSize: 48 },
   emptyTitle: { fontSize: 18, fontWeight: "700", color: "#333" },
   emptySubtitle: { fontSize: 14, color: "#888", textAlign: "center" },
   backToSearchBtn: {
-    marginTop: 16, borderWidth: 1.5, borderColor: "#333",
-    borderRadius: 8, paddingVertical: 10, paddingHorizontal: 24,
+    marginTop: 16,
+    borderWidth: 1.5,
+    borderColor: "#333",
+    borderRadius: 8,
+    paddingVertical: 10,
+    paddingHorizontal: 24,
   },
   backToSearchText: { fontSize: 14, fontWeight: "600", color: "#333" },
 });
