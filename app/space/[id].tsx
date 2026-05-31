@@ -41,7 +41,7 @@ export default function SpaceDetailScreen() {
     );
   }
 
-  const crowdness = crowdnessMap[space.id] ?? "lots";
+  const crowdness = crowdnessMap[space.id] ?? "none";
   const currentOption = CROWDNESS_OPTIONS.find((o) => o.value === crowdness)!;
 
   const handleSetCrowdness = async (value: CrowdnessLevel) => {

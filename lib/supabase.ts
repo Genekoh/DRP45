@@ -73,7 +73,7 @@ export async function fetchSpaceById(spaceId: string): Promise<Space | null> {
  * Update or create a space with Google Place ID
  */
 export async function upsertSpace(space: Space): Promise<void> {
-  await fetch(`${SUPABASE_URL}/rest/v1/spaces`, {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/spaces`, {
     method: "POST",
     headers: {
       ...HEADERS,
@@ -81,6 +81,9 @@ export async function upsertSpace(space: Space): Promise<void> {
     },
     body: JSON.stringify(space),
   });
+  if (!res.ok) {
+    throw new Error(`upsertSpace failed: ${res.statusText}`);
+  }
 }
 
 // ============ CROWDNESS TABLE ============

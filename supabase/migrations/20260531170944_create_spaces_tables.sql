@@ -9,7 +9,7 @@ CREATE TABLE IF NOT EXISTS spaces (
   safety_level INTEGER,
   features TEXT[] DEFAULT '{}',
   tags TEXT[] DEFAULT '{}',
-  google_place_id TEXT UNIQUE,
+  google_place_id TEXT UNIQUE NOT NULL,
   created_at TIMESTAMP DEFAULT NOW(),
   updated_at TIMESTAMP DEFAULT NOW()
 );

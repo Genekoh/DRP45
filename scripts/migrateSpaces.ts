@@ -1,8 +1,5 @@
-import { upsertSpace, Space } from "../lib/supabase";
-import {
-  textSearchPlace,
-  findNearbyPlaceByName,
-} from "../lib/geocoding";
+import { findNearbyPlaceByName, textSearchPlace } from "../lib/geocoding";
+import { Space, upsertSpace, updateCrowdness } from "../lib/supabase";
 
 /**
  * Migration script: Add Google Place IDs to existing spaces
@@ -60,7 +57,7 @@ export async function migrateSpacesToSupabase() {
         space.latitude,
         space.longitude,
         space.name,
-        200 // Search within 200m
+        200, // Search within 200m
       );
 
       // Fallback to text search if nearby search didn't work
@@ -92,6 +89,7 @@ export async function migrateSpacesToSupabase() {
 
       // Upsert to Supabase
       await upsertSpace(spaceForDB);
+      await updateCrowdness(space.id, "none");
       console.log(`  💾 Saved to Supabase`);
     } catch (error) {
       console.error(`  ❌ Error processing ${space.name}:`, error);
@@ -106,3 +104,4 @@ if (process.env.NODE_ENV === "development") {
   // Uncomment to run migration:
   // migrateSpacesToSupabase().catch(console.error);
 }
+migrateSpacesToSupabase().catch(console.error);
