@@ -1,6 +1,6 @@
 import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
-import React, { useState, useEffect } from "react";
+import React, { useEffect, useState } from "react";
 import {
   ActivityIndicator,
   ScrollView,
@@ -11,7 +11,7 @@ import {
 } from "react-native";
 import MapView, { Callout, Marker } from "react-native-maps";
 import SpaceCard from "../components/SpaceCard";
-import { useCrowdness, CrowdnessPrediction } from "../context/CrowdnessContext";
+import { CrowdnessPrediction, useCrowdness } from "../context/CrowdnessContext";
 
 type SortOption = "Relevance" | "Distance";
 type ViewMode = "List" | "Map";
@@ -25,8 +25,13 @@ export default function ResultsScreen() {
     endTime: string;
   }>();
 
-  const { spaces, crowdnessMap, predictionsMap, getPredictionForSpace, loading: contextLoading } =
-    useCrowdness();
+  const {
+    spaces,
+    crowdnessMap,
+    predictionsMap,
+    getPredictionForSpace,
+    loading: contextLoading,
+  } = useCrowdness();
 
   const activeFilters = params.filters
     ? params.filters.split(",").filter(Boolean)
@@ -38,7 +43,7 @@ export default function ResultsScreen() {
   const [loadingPredictions, setLoadingPredictions] = useState(true);
 
   // Calculate distance from first space as reference (hardcoded for demo)
-  const referencePoint = { lat: 51.4980, lng: -0.1840 };
+  const referencePoint = { lat: 51.498, lng: -0.184 };
 
   const calculateDistance = (lat: number, lng: number) => {
     const R = 6371; // Earth's radius in km
@@ -65,9 +70,7 @@ export default function ResultsScreen() {
       ...space,
       distance: calculateDistance(space.latitude, space.longitude),
     }))
-    .sort((a, b) =>
-      sortBy === "Distance" ? a.distance - b.distance : 0
-    );
+    .sort((a, b) => (sortBy === "Distance" ? a.distance - b.distance : 0));
 
   // Load predictions for all visible spaces
   useEffect(() => {
@@ -134,13 +137,17 @@ export default function ResultsScreen() {
       {(activeFilters.length > 0 || params.query) && (
         <View style={styles.summaryBox}>
           {params.query ? (
-            <Text style={styles.summaryText}>🔍 &quot;{params.query}&quot;</Text>
+            <Text style={styles.summaryText}>
+              🔍 &quot;{params.query}&quot;
+            </Text>
           ) : null}
           <Text style={styles.summaryText}>
             👥 Group: {groupSize} · 🕐 {params.startTime} — {params.endTime}
           </Text>
           {activeFilters.length > 0 && (
-            <Text style={styles.summaryText}>🏷️ {activeFilters.join(", ")}</Text>
+            <Text style={styles.summaryText}>
+              🏷️ {activeFilters.join(", ")}
+            </Text>
           )}
         </View>
       )}
@@ -149,10 +156,18 @@ export default function ResultsScreen() {
         {(["List", "Map"] as ViewMode[]).map((mode) => (
           <TouchableOpacity
             key={mode}
-            style={[styles.toggleBtn, viewMode === mode && styles.toggleBtnActive]}
+            style={[
+              styles.toggleBtn,
+              viewMode === mode && styles.toggleBtnActive,
+            ]}
             onPress={() => setViewMode(mode)}
           >
-            <Text style={[styles.toggleText, viewMode === mode && styles.toggleTextActive]}>
+            <Text
+              style={[
+                styles.toggleText,
+                viewMode === mode && styles.toggleTextActive,
+              ]}
+            >
               {mode}
             </Text>
           </TouchableOpacity>
@@ -163,13 +178,16 @@ export default function ResultsScreen() {
         <Text style={styles.sortLabel}>Sort by :</Text>
         <TouchableOpacity
           onPress={() =>
-            setSortBy((prev) => (prev === "Distance" ? "Relevance" : "Distance"))
+            setSortBy((prev) =>
+              prev === "Distance" ? "Relevance" : "Distance",
+            )
           }
         >
           <Text style={styles.sortValue}>{sortBy} ▾</Text>
         </TouchableOpacity>
         <Text style={styles.resultCount}>
-          {sortedSpaces.length} space{sortedSpaces.length !== 1 ? "s" : ""} found
+          {sortedSpaces.length} space{sortedSpaces.length !== 1 ? "s" : ""}{" "}
+          found
         </Text>
       </View>
 
@@ -182,8 +200,8 @@ export default function ResultsScreen() {
         <MapView
           style={styles.map}
           initialRegion={{
-            latitude: 51.4980,
-            longitude: -0.1840,
+            latitude: 51.498,
+            longitude: -0.184,
             latitudeDelta: 0.02,
             longitudeDelta: 0.02,
           }}
@@ -193,12 +211,18 @@ export default function ResultsScreen() {
             return (
               <Marker
                 key={space.id}
-                coordinate={{ latitude: space.latitude, longitude: space.longitude }}
+                coordinate={{
+                  latitude: space.latitude,
+                  longitude: space.longitude,
+                }}
                 pinColor={getCrowdnessColor(prediction)}
               >
                 <Callout
                   onPress={() =>
-                    router.push({ pathname: "/space/[id]", params: { id: space.id } })
+                    router.push({
+                      pathname: "/space/[id]",
+                      params: { id: space.id },
+                    })
                   }
                 >
                   <View style={styles.callout}>
@@ -208,14 +232,17 @@ export default function ResultsScreen() {
                     {prediction && (
                       <>
                         <Text style={styles.calloutPrediction}>
-                          {prediction.level.toUpperCase()} ({prediction.confidence}%)
+                          {prediction.level.toUpperCase()} (
+                          {prediction.confidence}%)
                         </Text>
                         <Text style={styles.calloutSource}>
                           {getSourceBadge(prediction.source)}
                         </Text>
                       </>
                     )}
-                    <Text style={styles.calloutLink}>Tap to view details →</Text>
+                    <Text style={styles.calloutLink}>
+                      Tap to view details →
+                    </Text>
                   </View>
                 </Callout>
               </Marker>
@@ -232,7 +259,10 @@ export default function ResultsScreen() {
                   key={space.id}
                   activeOpacity={0.8}
                   onPress={() =>
-                    router.push({ pathname: "/space/[id]", params: { id: space.id } })
+                    router.push({
+                      pathname: "/space/[id]",
+                      params: { id: space.id },
+                    })
                   }
                 >
                   <View style={styles.spaceCardWrapper}>
@@ -282,7 +312,10 @@ export default function ResultsScreen() {
               <Text style={styles.emptySubtitle}>
                 Try adjusting your filters or search query
               </Text>
-              <TouchableOpacity style={styles.backToSearchBtn} onPress={() => router.back()}>
+              <TouchableOpacity
+                style={styles.backToSearchBtn}
+                onPress={() => router.back()}
+              >
                 <Text style={styles.backToSearchText}>← Back to Search</Text>
               </TouchableOpacity>
             </View>
@@ -294,7 +327,12 @@ export default function ResultsScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f5f5f5", paddingTop: 60, paddingHorizontal: 16 },
+  container: {
+    flex: 1,
+    backgroundColor: "#f5f5f5",
+    paddingTop: 60,
+    paddingHorizontal: 16,
+  },
   header: { flexDirection: "row", alignItems: "center", marginBottom: 12 },
   backBtn: { marginRight: 12, padding: 4 },
   headerTitle: { fontSize: 20, fontWeight: "700", color: "#111" },
@@ -317,22 +355,46 @@ const styles = StyleSheet.create({
     alignSelf: "center",
     marginBottom: 16,
   },
-  toggleBtn: { paddingVertical: 8, paddingHorizontal: 28, backgroundColor: "#fff" },
+  toggleBtn: {
+    paddingVertical: 8,
+    paddingHorizontal: 28,
+    backgroundColor: "#fff",
+  },
   toggleBtnActive: { backgroundColor: "#333" },
   toggleText: { fontSize: 14, color: "#333", fontWeight: "600" },
   toggleTextActive: { color: "#fff" },
-  sortRow: { flexDirection: "row", alignItems: "center", marginBottom: 16, gap: 6 },
+  sortRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 16,
+    gap: 6,
+  },
   sortLabel: { fontSize: 14, color: "#444" },
   sortValue: { fontSize: 14, fontWeight: "700", color: "#111" },
   resultCount: { marginLeft: "auto", fontSize: 13, color: "#888" },
-  loadingBox: { flex: 1, justifyContent: "center", alignItems: "center", gap: 12 },
+  loadingBox: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    gap: 12,
+  },
   loadingText: { fontSize: 14, color: "#888" },
   map: { flex: 1, borderRadius: 12, overflow: "hidden" },
   callout: { width: 220, padding: 10 },
-  calloutTitle: { fontSize: 14, fontWeight: "700", color: "#111", marginBottom: 2 },
+  calloutTitle: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#111",
+    marginBottom: 2,
+  },
   calloutSub: { fontSize: 12, color: "#666", marginBottom: 2 },
   calloutHrs: { fontSize: 12, color: "#888", marginBottom: 4 },
-  calloutPrediction: { fontSize: 12, fontWeight: "600", color: "#007AFF", marginBottom: 2 },
+  calloutPrediction: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#007AFF",
+    marginBottom: 2,
+  },
   calloutSource: { fontSize: 11, color: "#666", marginBottom: 4 },
   calloutLink: { fontSize: 12, color: "#007AFF", fontWeight: "600" },
   list: { paddingBottom: 40 },
