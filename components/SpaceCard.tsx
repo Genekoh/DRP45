@@ -4,10 +4,16 @@ import { StyleSheet, Text, View } from "react-native";
 export type CrowdnessLevel = "lots" | "limited" | "none";
 
 interface SpaceCardProps {
+  id?: string;
   name: string;
+  address?: string;
   openingHrs: string;
   safetyLevel: number;
   features: string[];
+  tags?: string[];
+  distance?: number;
+  latitude?: number;
+  longitude?: number;
   crowdness: CrowdnessLevel;
 }
 

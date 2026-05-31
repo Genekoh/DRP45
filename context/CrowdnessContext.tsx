@@ -250,5 +250,3 @@ export function CrowdnessProvider({ children }: { children: React.ReactNode }) {
 export function useCrowdness() {
   return useContext(CrowdnessContext);
 }
-
-export type { CrowdnessLevel, CrowdnessPrediction };
